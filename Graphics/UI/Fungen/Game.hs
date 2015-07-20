@@ -1,8 +1,8 @@
 {-# OPTIONS_HADDOCK hide #-}
-{- | 
+{- |
 This FunGEn module contains some important game routines.
 -}
-{- 
+{-
 
 FunGEN - Functional Game Engine
 http://www.cin.ufpe.br/~haskell/fungen
@@ -18,7 +18,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 module Graphics.UI.Fungen.Game (
   Game, IOGame,
   -- ** creating
-  createGame, 
+  createGame,
   -- ** IO utilities
   runIOGame, runIOGameM, liftIOtoIOGame, liftIOtoIOGame',
   -- ** game state
@@ -70,16 +70,16 @@ import Data.IORef
 import Text.Printf
 
 
--- | A game has the type @Game t s u v@, where 
---  
+-- | A game has the type @Game t s u v@, where
+--
 -- * t is the type of the game special attributes
--- 
+--
 -- * s is the type of the object special attributes
--- 
+--
 -- * u is the type of the game levels (state)
--- 
+--
 -- * v is the type of the map tile special attribute, in case we use a Tile Map as the background of our game
--- 
+--
 -- For a mnemonic, uh...
 --
 -- * t - /T/op-level game attribute type,
@@ -89,7 +89,7 @@ import Text.Printf
 -- * u - /U/pdating game state type,
 --
 -- * v - /V/icinity (map tile) attribute type.
--- 
+--
 -- Internally, a Game consists of:
 --
 -- * @gameMap       :: IORef (GameMap v)         -- a map (background)@
@@ -111,7 +111,7 @@ import Text.Printf
 -- * @pictureList   :: IORef [TextureObject]     -- some pictures@
 --
 -- * @fpsInfo       :: IORef (Int,Int,Float)     -- only for debugging@
--- 
+--
 data Game t s u v = Game {
 	gameMap       :: IORef (GameMap v), -- ^ a map (background)
     	gameState     :: IORef u,           -- ^ initial game state
@@ -169,12 +169,12 @@ runIOGame (IOG f) g = f g
 
 runIOGameM :: IOGame t s u v a -> Game t s u v -> IO ()
 runIOGameM x g = runIOGame x g >> return ()
-                 
+
 liftIOtoIOGame      :: IO a -> IOGame t s u v a
 liftIOtoIOGame p    =
      IOG $ \s -> (do y <- p
                      return (s,y))
-                     
+
 liftIOtoIOGame'     :: (a -> IO ()) -> a -> IOGame t s u v ()
 liftIOtoIOGame' p q =
      IOG $ \s -> (do p q
@@ -219,7 +219,7 @@ getObjectManagers = IOG ( \game -> (readIORef (objManagers game) >>= \om -> retu
 
 setObjectManagers :: [(ObjectManager s)] -> IOGame t s u v ()
 setObjectManagers o = IOG ( \game -> (writeIORef (objManagers game) o >> return (game,()) ))
-                                                   
+
 getQuadric :: IOGame t s u v QuadricPrimitive
 getQuadric = IOG ( \game -> return (game,quadricObj game) )
 
@@ -242,7 +242,7 @@ getFpsInfo = IOG ( \game -> (readIORef (fpsInfo game) >>= \fpsi -> return (game,
 -- internal use only
 setFpsInfo :: (Int,Int,Float) -> IOGame t s u v ()
 setFpsInfo f = IOG ( \game -> (writeIORef (fpsInfo game) f >> return (game,()) ))
-                                                   
+
 ----------------------------------
 -- initialization of the game
 ----------------------------------
@@ -289,18 +289,18 @@ drawMap :: IOGame t s u v ()
 drawMap = do
     m <- getMap
     p <- getPictureList
-    (_,(winWidth, winHeight),_) <- getWindowConfig
-    liftIOtoIOGame $ drawGameMap m (fromIntegral winWidth, fromIntegral winHeight) p
+    WindowConfig { wcSize = (Point2D winWidth winHeight) } <- getWindowConfig
+    liftIOtoIOGame $ drawGameMap m (Point2D (fromIntegral winWidth) (fromIntegral winHeight)) p
 
 -- | returns a mapTile, given its pixel position (x,y) in the screen
-getTileFromWindowPosition :: (GLdouble,GLdouble) -> IOGame t s u v (Tile v)
-getTileFromWindowPosition (preX,preY) = do
+getTileFromWindowPosition :: (Point2D GLdouble) -> IOGame t s u v (Tile v)
+getTileFromWindowPosition (Point2D preX preY) = do
        m <- getMap
        if (isTileMap m)
-            then let (tileXsize,tileYsize) = getTileMapTileSize m
-                     (scrollX,scrollY) = getTileMapScroll m
+            then let (Point2D tileXsize tileYsize) = getTileMapTileSize m
+                     (Point2D scrollX scrollY) = getTileMapScroll m
                      (x,y) = (preX + scrollX,preY + scrollY)
-                     (sX,sY) = getTileMapSize m
+                     (Point2D sX sY) = getTileMapSize m
                  in if (x >= sX || y >= sY)
                         then error ("Game.getTileFromWindowPosition error: pixel " ++ (show (x,y)) ++ " out of map range!")
                         else getTileFromIndex (fromEnum (y/tileXsize),fromEnum (x/tileYsize)) -- (x,y) window orientation is different than index (x,y)!
@@ -421,7 +421,7 @@ addObjectsToGroup :: [(GameObject s)] -> String -> IOGame t s u v ()
 addObjectsToGroup objs managerName = do
 	-- manager <- findObjectManager managerName
 	managers <- getObjectManagers
-	let newManagers = addObjectsToManager objs managerName managers 
+	let newManagers = addObjectsToManager objs managerName managers
 	setObjectManagers newManagers
 
 -- | adds an object to a new group
@@ -436,7 +436,7 @@ findObjectManager :: String -> IOGame t s u v (ObjectManager s)
 findObjectManager mngName = do
     objectManagers <- getObjectManagers
     return (searchObjectManager mngName objectManagers)
-    
+
 -- | returns an object of the game, given its name and is object manager name
 findObject :: String -> String -> IOGame t s u v (GameObject s)
 findObject objName mngName = do
@@ -465,21 +465,21 @@ getObjectAsleep o = do managers <- getObjectManagers
 
 -- | because an object can have its size modified, it is necessary
 -- to search through the managers to find it, otherwise this functions won't be safe.
-getObjectSize :: GameObject s -> IOGame t s u v (GLdouble,GLdouble)
+getObjectSize :: GameObject s -> IOGame t s u v (Point2D GLdouble)
 getObjectSize o = do managers <- getObjectManagers
                      let obj = findObjectFromId o managers
                      return (getGameObjectSize obj)
 
 -- | because an object can have its position modified, it is necessary
 -- to search through the managers to find it, otherwise this functions won't be safe.
-getObjectPosition :: GameObject s -> IOGame t s u v (GLdouble,GLdouble)
+getObjectPosition :: GameObject s -> IOGame t s u v (Point2D GLdouble)
 getObjectPosition o = do managers <- getObjectManagers
                          let obj = findObjectFromId o managers
                          return (getGameObjectPosition obj)
 
 -- | because an object can have its speed modified, it is necessary
 -- to search through the managers to find it, otherwise this functions won't be safe.
-getObjectSpeed :: GameObject s -> IOGame t s u v (GLdouble,GLdouble)
+getObjectSpeed :: GameObject s -> IOGame t s u v (Point2D GLdouble)
 getObjectSpeed o = do managers <- getObjectManagers
                       let obj = findObjectFromId o managers
                       return (getGameObjectSpeed obj)
@@ -496,11 +496,11 @@ setObjectAsleep :: Bool -> GameObject s -> IOGame t s u v ()
 setObjectAsleep asleep obj = replaceObject obj (updateObjectAsleep asleep)
 
 -- | changes the position of an object, given its new position
-setObjectPosition :: (GLdouble,GLdouble) -> GameObject s -> IOGame t s u v ()
+setObjectPosition :: (Point2D GLdouble) -> GameObject s -> IOGame t s u v ()
 setObjectPosition pos obj = replaceObject obj (updateObjectPosition pos)
 
 -- | changes the speed of an object, given its new speed
-setObjectSpeed :: (GLdouble,GLdouble) -> GameObject s -> IOGame t s u v ()
+setObjectSpeed :: (Point2D GLdouble) -> GameObject s -> IOGame t s u v ()
 setObjectSpeed speed obj = replaceObject obj (updateObjectSpeed speed)
 
 -- | changes the current picture of a multitextured object
@@ -523,12 +523,12 @@ replaceObject obj f = do
     setObjectManagers newManagers
 
 reverseXSpeed :: GameObject s -> IOGame t s u v ()
-reverseXSpeed  o = do (vX,vY) <- getObjectSpeed o
-                      setObjectSpeed (-vX,vY) o
+reverseXSpeed  o = do (Point2D vX vY) <- getObjectSpeed o
+                      setObjectSpeed (Point2D (-vX) vY) o
 
 reverseYSpeed :: GameObject s -> IOGame t s u v ()
-reverseYSpeed o = do (vX,vY) <- getObjectSpeed o
-                     setObjectSpeed (vX,-vY) o
+reverseYSpeed o = do (Point2D vX vY) <- getObjectSpeed o
+                     setObjectSpeed (Point2D vX (-vY)) o
 
 -----------------------
 -- collision routines
@@ -541,9 +541,9 @@ objectTopMapCollision o = do
     if asleep
         then (return False)
         else do m <- getMap
-                (_,pY) <- getObjectPosition o
-                (_,sY) <- getObjectSize o
-                let (_,mY) = getMapSize m
+                (Point2D _ pY) <- getObjectPosition o
+                (Point2D _ sY) <- getObjectSize o
+                let (Point2D _ mY) = getMapSize m
                 return (pY + (sY/2) > (realToFrac mY))
 
 -- | checks the collision between an object and the top of the map in the next game cicle
@@ -553,10 +553,10 @@ objectTopMapFutureCollision o = do
     if asleep
         then (return False)
         else do m <- getMap
-                (_,pY) <- getObjectPosition o
-                (_,vY) <- getObjectSpeed o
-                (_,sY) <- getObjectSize o
-                let (_,mY) = getMapSize m
+                (Point2D _ pY) <- getObjectPosition o
+                (Point2D _ vY) <- getObjectSpeed o
+                (Point2D _ sY) <- getObjectSize o
+                let (Point2D _ mY) = getMapSize m
                 return (pY + (sY/2) + vY > (realToFrac mY))
 
 -- | checks the collision between an object and the bottom of the map
@@ -565,8 +565,8 @@ objectBottomMapCollision o = do
     asleep <- getObjectAsleep o
     if asleep
         then (return False)
-        else do (_,pY) <- getObjectPosition o
-                (_,sY) <- getObjectSize o
+        else do (Point2D _ pY) <- getObjectPosition o
+                (Point2D _ sY) <- getObjectSize o
                 return (pY - (sY/2) < 0)
 
 -- | checks the collision between an object and the bottom of the map in the next game cicle
@@ -575,9 +575,9 @@ objectBottomMapFutureCollision o = do
     asleep <- getObjectAsleep o
     if asleep
         then (return False)
-        else do (_,pY) <- getObjectPosition o
-                (_,sY) <- getObjectSize o
-                (_,vY) <- getObjectSpeed o
+        else do (Point2D _ pY) <- getObjectPosition o
+                (Point2D _ sY) <- getObjectSize o
+                (Point2D _ vY) <- getObjectSpeed o
                 return (pY - (sY/2) + vY < 0)
 
 -- | checks the collision between an object and the right side of the map
@@ -587,9 +587,9 @@ objectRightMapCollision o = do
     if asleep
         then (return False)
         else do m <- getMap
-                (pX,_) <- getObjectPosition o
-                (sX,_) <- getObjectSize o
-                let (mX,_) = getMapSize m
+                (Point2D pX _) <- getObjectPosition o
+                (Point2D sX _) <- getObjectSize o
+                let (Point2D mX _) = getMapSize m
                 return (pX + (sX/2) > (realToFrac mX))
 
 -- | checks the collision between an object and the right side of the map in the next game cicle
@@ -599,10 +599,10 @@ objectRightMapFutureCollision o = do
     if asleep
         then (return False)
         else do m <- getMap
-                (pX,_) <- getObjectPosition o
-                (sX,_) <- getObjectSize o
-                (vX,_) <- getObjectSpeed o
-                let (mX,_) = getMapSize m
+                (Point2D pX _) <- getObjectPosition o
+                (Point2D sX _) <- getObjectSize o
+                (Point2D vX _) <- getObjectSpeed o
+                let (Point2D mX _) = getMapSize m
                 return (pX + (sX/2) + vX > (realToFrac mX))
 
 -- | checks the collision between an object and the left side of the map
@@ -611,8 +611,8 @@ objectLeftMapCollision o = do
     asleep <- getObjectAsleep o
     if asleep
         then (return False)
-        else do (pX,_) <- getObjectPosition o
-                (sX,_) <- getObjectSize o
+        else do (Point2D pX _) <- getObjectPosition o
+                (Point2D sX _) <- getObjectSize o
                 return (pX - (sX/2) < 0)
 
 -- | checks the collision between an object and the left side of the map in the next game cicle
@@ -621,9 +621,9 @@ objectLeftMapFutureCollision o = do
     asleep <- getObjectAsleep o
     if asleep
         then (return False)
-        else do (pX,_) <- getObjectPosition o
-                (sX,_) <- getObjectSize o
-                (vX,_) <- getObjectSpeed o
+        else do (Point2D pX _) <- getObjectPosition o
+                (Point2D sX _) <- getObjectSize o
+                (Point2D vX _) <- getObjectSpeed o
                 return (pX - (sX/2) + vX < 0)
 
 -- | checks the collision between two objects
@@ -633,21 +633,21 @@ objectsCollision o1 o2 = do
     asleep2 <- getObjectAsleep o2
     if (asleep1 || asleep2)
                 then (return False)
-                else  do (p1X,p1Y) <- getObjectPosition o1
-                         (p2X,p2Y) <- getObjectPosition o2
-                         (s1X,s1Y) <- getObjectSize o1
-                         (s2X,s2Y) <- getObjectSize o2
-        
+                else  do (Point2D p1X p1Y) <- getObjectPosition o1
+                         (Point2D p2X p2Y) <- getObjectPosition o2
+                         (Point2D s1X s1Y) <- getObjectSize o1
+                         (Point2D s2X s2Y) <- getObjectSize o2
+
                          let aX1 = p1X - (s1X/2)
                              aX2 = p1X + (s1X/2)
                              aY1 = p1Y - (s1Y/2)
                              aY2 = p1Y + (s1Y/2)
-        
+
                              bX1 = p2X - (s2X/2)
                              bX2 = p2X + (s2X/2)
                              bY1 = p2Y - (s2Y/2)
                              bY2 = p2Y + (s2Y/2)
-                              
+
                          return ((bX1 < aX2) && (aX1 < bX2) && (bY1 < aY2) && (aY1 < bY2))
 
 -- | checks the collision between two objects in the next game cicle
@@ -657,13 +657,13 @@ objectsFutureCollision o1 o2 = do
     asleep2 <- getObjectAsleep o2
     if (asleep1 || asleep2)
                 then (return False)
-                else do (p1X,p1Y) <- getObjectPosition o1
-                        (p2X,p2Y) <- getObjectPosition o2
-                        (v1X,v1Y) <- getObjectSpeed o1
-                        (v2X,v2Y) <- getObjectSpeed o2
-                        (s1X,s1Y) <- getObjectSize o1
-                        (s2X,s2Y) <- getObjectSize o2
-        
+                else do (Point2D p1X p1Y) <- getObjectPosition o1
+                        (Point2D p2X p2Y) <- getObjectPosition o2
+                        (Point2D v1X v1Y) <- getObjectSpeed o1
+                        (Point2D v2X v2Y) <- getObjectSpeed o2
+                        (Point2D s1X s1Y) <- getObjectSize o1
+                        (Point2D s2X s2Y) <- getObjectSize o2
+
                         let aX1 = p1X - (s1X/2) + v1X
                             aX2 = p1X + (s1X/2) + v1X
                             aY1 = p1Y - (s1Y/2) + v1Y
@@ -696,20 +696,20 @@ pointsObjectCollision p1X p1Y s1X s1Y o2 = do
         asleep <- getObjectAsleep o2
         if asleep
                 then (return False)
-                else do (p2X,p2Y) <- getObjectPosition o2
-                        (s2X,s2Y) <- getObjectSize o2
+                else do (Point2D p2X p2Y) <- getObjectPosition o2
+                        (Point2D s2X s2Y) <- getObjectSize o2
 
                         let aX1 = p1X - (s1X/2)
                             aX2 = p1X + (s1X/2)
                             aY1 = p1Y - (s1Y/2)
                             aY2 = p1Y + (s1Y/2)
-        
+
                             bX1 = p2X - (s2X/2)
                             bX2 = p2X + (s2X/2)
                             bY1 = p2Y - (s2Y/2)
                             bY2 = p2Y + (s2Y/2)
                         return ((bX1 < aX2) && (aX1 < bX2) && (bY1 < aY2) && (aY1 < bY2))
-                         
+
 pointsObjectListCollision :: GLdouble -> GLdouble -> GLdouble -> GLdouble -> [(GameObject s)] -> IOGame t s u v Bool
 pointsObjectListCollision _ _ _ _ [] = return False
 pointsObjectListCollision p1X p1Y s1X s1Y (o:os) = do
@@ -726,7 +726,7 @@ printOnPrompt :: Show a => a -> IOGame t s u v ()
 printOnPrompt a = liftIOtoIOGame' print a
 
 -- | prints a string in the current window
-printOnScreen :: String -> BitmapFont -> (GLdouble,GLdouble) -> GLclampf -> GLclampf -> GLclampf -> IOGame t s u v ()
+printOnScreen :: String -> BitmapFont -> (Point2D GLdouble) -> GLclampf -> GLclampf -> GLclampf -> IOGame t s u v ()
 printOnScreen text font pos r g b = do
         t <- getTextList
         setTextList ([(text,font,pos,r,g,b)] ++ t)
@@ -754,8 +754,8 @@ randomDouble (x,y) = liftIOtoIOGame $ randDouble (x,y)
 --           DEBUGGING ROUTINES              --
 -----------------------------------------------
 
--- | shows the frame rate (or frame per seconds) 
-showFPS :: BitmapFont -> (GLdouble,GLdouble) -> GLclampf -> GLclampf -> GLclampf -> IOGame t s u v ()
+-- | shows the frame rate (or frame per seconds)
+showFPS :: BitmapFont -> (Point2D GLdouble) -> GLclampf -> GLclampf -> GLclampf -> IOGame t s u v ()
 showFPS font pos r g b = do
 	(framei,timebasei,fps) <- getFpsInfo
 	timei <- getElapsedTime
@@ -778,7 +778,7 @@ wait delay = do
 	(framei,timebasei,fps) <- getFpsInfo
 	setFpsInfo (framei,(timebasei + delay),fps) -- helps FPS info to be displayed correctly (if requested)
 	startTime <- getElapsedTime
-	
+
 	waitAux delay startTime
 
 waitAux :: Int -> Int -> IOGame t s u v ()

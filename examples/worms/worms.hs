@@ -1,4 +1,4 @@
-{- 
+{-
 
 worms - a very simple FunGEn example.
 http://www.cin.ufpe.br/~haskell/fungen
@@ -17,7 +17,7 @@ import Graphics.UI.Fungen
 import Graphics.Rendering.OpenGL (GLdouble)
 import Paths_FunGEn (getDataFileName)
 
-data GameAttribute = GA Int Int Int (GLdouble,GLdouble) Int
+data GameAttribute = GA Int Int Int (Point2D GLdouble) Int
 data ObjectAttribute = NoObjectAttribute | Tail Int
 data GameState = LevelStart Int | Level Int | GameOver
 data TileAttribute = NoTileAttribute
@@ -31,10 +31,10 @@ tileSize, speedMod :: GLdouble
 tileSize = 30.0
 speedMod = 30.0
 
-initPos, tail0Pos, tail1Pos :: (GLdouble,GLdouble)
-initPos  = (45.0,105.0)
-tail0Pos = (45.0,75.0)
-tail1Pos = (45.0,45.0)
+initPos, tail0Pos, tail1Pos :: Point2D GLdouble
+initPos  = (Point2D 45.0 105.0)
+tail0Pos = (Point2D 45.0 75.0)
+tail1Pos = (Point2D 45.0 45.0)
 
 maxFood, initTailSize, defaultTimer :: Int
 maxFood = 10
@@ -42,7 +42,7 @@ initTailSize = 2
 defaultTimer = 10
 
 magenta :: InvList
-magenta = Just [(255,0,255)]
+magenta = Just [ColorRGB 255 0 255]
 
 bmpList :: FilePictureList
 bmpList = [("level1.bmp",          Nothing),
@@ -74,7 +74,10 @@ free3   = 16
 
 main :: IO ()
 main = do
-  let winConfig = ((200,100),(780,600),"WORMS - by Andre Furtado")
+  let winConfig = WindowConfig { wcPosition = (Point2D 200 100)
+                               , wcSize = (Point2D 780 600)
+                               , wcName = "WORMS - by Andre Furtado"
+                               }
 
       gameMap = multiMap [(tileMap map1 tileSize tileSize),
                           (tileMap map2 tileSize tileSize),
@@ -94,65 +97,65 @@ main = do
                (SpecialKey KeyDown,  Press, turnDown )
               ,(Char 'q',            Press, \_ _ -> funExit)
               ]
-  
+
   bmpList' <- mapM (\(a,b) -> do { a' <- getDataFileName ("examples/worms/"++a); return (a', b)}) bmpList
   funInit winConfig gameMap groups (LevelStart 1) gameAttribute input gameCycle (Timer 150) bmpList'
 
 createMsgs :: [WormsObject]
 createMsgs =
-  let picLevel1          = Tex (150,50)  0
-      picLevel2          = Tex (150,50)  1
-      picLevel3          = Tex (150,50)  2
-      picGameOver        = Tex (300,100) 3
-      picCongratulations = Tex (300,100) 4
-  in [(object "level1"          picLevel1          True (395,300) (0,0) NoObjectAttribute),
-      (object "level2"          picLevel2          True (395,300) (0,0) NoObjectAttribute),
-      (object "level3"          picLevel3          True (395,300) (0,0) NoObjectAttribute),
-      (object "gameover"        picGameOver        True (395,300) (0,0) NoObjectAttribute),
-      (object "congratulations" picCongratulations True (395,300) (0,0) NoObjectAttribute)]
+  let picLevel1          = Tex (Point2D 150 50)  0
+      picLevel2          = Tex (Point2D 150 50)  1
+      picLevel3          = Tex (Point2D 150 50)  2
+      picGameOver        = Tex (Point2D 300 100) 3
+      picCongratulations = Tex (Point2D 300 100) 4
+  in [(object "level1"          picLevel1          True (Point2D 395 300) origin NoObjectAttribute),
+      (object "level2"          picLevel2          True (Point2D 395 300) origin NoObjectAttribute),
+      (object "level3"          picLevel3          True (Point2D 395 300) origin NoObjectAttribute),
+      (object "gameover"        picGameOver        True (Point2D 395 300) origin NoObjectAttribute),
+      (object "congratulations" picCongratulations True (Point2D 395 300) origin NoObjectAttribute)]
 
 createHead :: WormsObject
-createHead = let pic = Tex (tileSize,tileSize) 5
-             in object "head" pic True initPos (0,speedMod) NoObjectAttribute
+createHead = let pic = Tex (Point2D tileSize tileSize) 5
+             in object "head" pic True initPos (Point2D 0 speedMod) NoObjectAttribute
 
 createFood :: WormsObject
-createFood = let pic = Tex (tileSize,tileSize) 9
-             in object "food" pic True (0,0) (0,0) NoObjectAttribute
+createFood = let pic = Tex (Point2D tileSize tileSize) 9
+             in object "food" pic True origin origin NoObjectAttribute
 
 createTail :: [WormsObject]
-createTail = let picTail = Tex (tileSize,tileSize) 10
-             in (object "tail0"  picTail False tail0Pos (0,0) (Tail 0)):
-                (object "tail1"  picTail False tail1Pos (0,0) (Tail 1)):
+createTail = let picTail = Tex (Point2D tileSize tileSize) 10
+             in (object "tail0"  picTail False tail0Pos origin (Tail 0)):
+                (object "tail1"  picTail False tail1Pos origin (Tail 1)):
                 (createAsleepTails initTailSize (initTailSize + maxFood - 1) picTail)
 
 createAsleepTails :: Int -> Int -> ObjectPicture -> [WormsObject]
 createAsleepTails tMin tMax pic
   | (tMin > tMax) = []
-  | otherwise = (object ("tail" ++ (show tMin)) pic True (0,0) (0,0) (Tail 0)):(createAsleepTails (tMin + 1) tMax pic)
+  | otherwise = (object ("tail" ++ (show tMin)) pic True origin origin (Tail 0)):(createAsleepTails (tMin + 1) tMax pic)
 
 turnLeft :: Modifiers -> Position -> WormsAction ()
 turnLeft _ _ = do
   snakeHead <- findObject "head" "head"
   setObjectCurrentPicture 8 snakeHead
-  setObjectSpeed (-speedMod,0) snakeHead
-    
+  setObjectSpeed (Point2D (-speedMod) 0) snakeHead
+
 turnRight :: Modifiers -> Position -> WormsAction ()
 turnRight _ _ = do
   snakeHead <- findObject "head" "head"
   setObjectCurrentPicture 7 snakeHead
-  setObjectSpeed (speedMod,0) snakeHead
+  setObjectSpeed (Point2D speedMod 0) snakeHead
 
 turnUp :: Modifiers -> Position -> WormsAction ()
 turnUp _ _ = do
   snakeHead <- findObject "head" "head"
   setObjectCurrentPicture 5 snakeHead
-  setObjectSpeed (0,speedMod) snakeHead
+  setObjectSpeed (Point2D 0 speedMod) snakeHead
 
 turnDown :: Modifiers -> Position -> WormsAction ()
 turnDown _ _ = do
   snakeHead <- findObject "head" "head"
   setObjectCurrentPicture 6 snakeHead
-  setObjectSpeed (0,-speedMod) snakeHead
+  setObjectSpeed (Point2D 0 (-speedMod)) snakeHead
 
 gameCycle :: WormsAction ()
 gameCycle = do
@@ -176,7 +179,7 @@ gameCycle = do
                                            snakeHead <- findObject "head" "head"
                                            setObjectAsleep False snakeHead
                                            setObjectPosition initPos snakeHead
-                                           setObjectSpeed (0.0,speedMod) snakeHead
+                                           setObjectSpeed (Point2D 0.0 speedMod) snakeHead
                                            setObjectCurrentPicture 5 snakeHead
                                            setGameAttribute (GA defaultTimer remainingFood tailSize previousHeadPos score)
                                            destroyObject level
@@ -226,13 +229,13 @@ gameCycle = do
                       drawObject gameover
                       if (timer == 0)
                               then funExit
-                              else (setGameAttribute (GA (timer - 1) 0 0 (0,0) 0))
+                              else (setGameAttribute (GA (timer - 1) 0 0 origin 0))
 
 showScore :: WormsAction ()
 showScore = do
   (GA _ remainingFood _ _ score) <- getGameAttribute
-  printOnScreen (printf "Score: %d    Food remaining: %d" score remainingFood) TimesRoman24 (40,8) 1.0 1.0 1.0
-  showFPS TimesRoman24 (780-60,8) 1.0 0.0 0.0
+  printOnScreen (printf "Score: %d    Food remaining: %d" score remainingFood) TimesRoman24 (Point2D 40 8) 1.0 1.0 1.0
+  showFPS TimesRoman24 (Point2D (780-60) 8) 1.0 0.0 0.0
 
 setNewMap :: Int -> WormsAction ()
 setNewMap 2 = setCurrentMapIndex 1
@@ -255,7 +258,7 @@ resetOtherTails n | (n == initTailSize + maxFood) = return ()
                                    setObjectAsleep True tailn
                                    resetOtherTails (n + 1)
 
-addTail :: (GLdouble,GLdouble) -> WormsAction ()
+addTail :: (Point2D GLdouble) -> WormsAction ()
 addTail presentHeadPos = do
   tails <- getObjectsFromGroup "tail"
   aliveTails <- getAliveTails tails []
@@ -289,7 +292,7 @@ addTailNumber (a:as) = do
   setObjectAttribute (Tail (n + 1)) a
   addTailNumber as
 
-moveTail :: (GLdouble,GLdouble) -> WormsAction ()
+moveTail :: (Point2D GLdouble) -> WormsAction ()
 moveTail presentHeadPos = do
   (GA timer remainingFood tailSize previousHeadPos score) <- getGameAttribute
   tails <- getObjectsFromGroup "tail"
@@ -325,10 +328,10 @@ checkSnakeCollision snakeHead = do
           then (do setGameState GameOver
                    disableObjectsDrawing
                    disableObjectsMoving
-                   setGameAttribute (GA defaultTimer 0 0 (0,0) 0))
+                   setGameAttribute (GA defaultTimer 0 0 origin 0))
           else return ()
 
-createNewFoodPosition :: WormsAction (GLdouble,GLdouble)
+createNewFoodPosition :: WormsAction (Point2D GLdouble)
 createNewFoodPosition = do
   x <- randomInt (1,18)
   y <- randomInt (1,24)
@@ -336,7 +339,7 @@ createNewFoodPosition = do
   tails <- getObjectsFromGroup "tail"
   tailPositionNotOk <- pointsObjectListCollision (toPixelCoord y) (toPixelCoord x) tileSize tileSize tails
   if (mapPositionOk && not tailPositionNotOk)
-      then (return (toPixelCoord y,toPixelCoord x))
+      then (return (Point2D (toPixelCoord y) (toPixelCoord x)))
       else createNewFoodPosition
   where toPixelCoord a = (tileSize/2) + (fromIntegral a) * tileSize
 

@@ -1,8 +1,8 @@
 {-# OPTIONS_HADDOCK hide #-}
-{- | 
+{- |
 This FunGEn module contains the map (game background) routines.
 -}
-{- 
+{-
 
 FunGEN - Functional Game Engine
 http://www.cin.ufpe.br/~haskell/fungen
@@ -35,16 +35,17 @@ import Graphics.Rendering.OpenGL
 type Tile t = (Int,Bool,Float,t) -- ^ index of picture, possibility to move, cost to move, additional params
 type TileMatrix t = [[(Tile t)]]
 type TileLine t = [(Tile t)]
+type GLPoint = Point2D GLdouble
 
 -- | A game background (flat color, scrollable texture, or tile map), or several of them.
 data GameMap t
-        = ColorMap (Color4 GLclampf) Point2D -- ^ color of the map, size of the map
-        | TextureMap Int Point2D Point2D Point2D Point2D  -- ^ texture id, size of texture, present scroll (visible window bottom & left), scroll speed (X,Y),size of the map
-        | TileMap (TileMatrix t)  Point2D Point2D Point2D Point2D  -- ^ texture handles, tiles matrix, size of tile, present scroll (visible window bottom & left), scroll speed (X,Y), size of the map
+        = ColorMap (Color4 GLclampf) GLPoint -- ^ color of the map, size of the map
+        | TextureMap Int GLPoint GLPoint GLPoint GLPoint  -- ^ texture id, size of texture, present scroll (visible window bottom & left), scroll speed (X,Y),size of the map
+        | TileMap (TileMatrix t)  GLPoint GLPoint GLPoint GLPoint  -- ^ texture handles, tiles matrix, size of tile, present scroll (visible window bottom & left), scroll speed (X,Y), size of the map
         | MultiMap [(GameMap t)] Int -- ^ list of maps, current map
 --      | PolygMap [Primitive]
 
-getMapSize :: GameMap t -> Point2D
+getMapSize :: GameMap t -> GLPoint
 getMapSize (ColorMap _ s) = s
 getMapSize (TextureMap _ _ _ _ s) = s
 getMapSize (TileMap _ _ _ _ s) = s
@@ -62,15 +63,15 @@ getTileMapTileMatrix :: GameMap t -> TileMatrix t
 getTileMapTileMatrix (TileMap m _ _ _ _) = m
 getTileMapTileMatrix _ = error "Map.getTileMapTileMatrix error: game map is not a tile map!"
 
-getTileMapTileSize :: GameMap t -> Point2D
+getTileMapTileSize :: GameMap t -> GLPoint
 getTileMapTileSize (TileMap _ ts _ _ _) = ts
 getTileMapTileSize _ = error "Map.getTileMapTileSize error: game map is not a tile map!"
 
-getTileMapScroll :: GameMap t -> Point2D
+getTileMapScroll :: GameMap t -> GLPoint
 getTileMapScroll (TileMap _ _ s _ _) = s
 getTileMapScroll _ = error "Map.getTileMapScroll error: game map is not a tile map!"
 
-getTileMapSize :: GameMap t -> Point2D
+getTileMapSize :: GameMap t -> GLPoint
 getTileMapSize (TileMap _ _ _ _ s) = s
 getTileMapSize _ = error "Map.getTileMapSize error: game map is not a tile map!"
 
@@ -125,15 +126,15 @@ updateCurrentIndex _ _ = error "Map.updateCurrentIndex error: the game map is no
 
 -- | creates a PreColorMap
 colorMap :: GLclampf -> GLclampf -> GLclampf -> GLdouble -> GLdouble -> GameMap t
-colorMap r g b sX sY = ColorMap (Color4 r g b 1.0) (sX,sY)
+colorMap r g b sX sY = ColorMap (Color4 r g b 1.0) (Point2D sX sY)
 
 -- | creates a PreTextureMap
 textureMap :: Int -> GLdouble -> GLdouble -> GLdouble -> GLdouble -> GameMap t
-textureMap texId tX tY sX sY = TextureMap texId (tX,tY) (0,0) (0,0) (sX,sY)
+textureMap texId tX tY sX sY = TextureMap texId (Point2D tX tY) origin origin (Point2D sX sY)
 
 -- | creates a PreTileMap, cheking if the tileMatrix given is valid and automatically defining the map size
 tileMap :: TileMatrix t -> GLdouble -> GLdouble -> GameMap t
-tileMap matrix tX tY | matrixOk matrix = TileMap matrix (tX,tY) (0,0) (0,0) (sX,sY)
+tileMap matrix tX tY | matrixOk matrix = TileMap matrix (Point2D tX tY) origin origin (Point2D sX sY)
                      | otherwise = error "Map.tileMap error: each line of your TileMap must have the same number of tiles!"
                    where sX = ((fromIntegral.length.head) matrix) * tX
                          sY = ((fromIntegral.length) matrix) * tY
@@ -173,15 +174,15 @@ clearGameScreen r g b = do
         clear [ColorBuffer]
 
 -- | draw the background map
-drawGameMap :: GameMap t -> Point2D -> [TextureObject] -> IO ()
+drawGameMap :: GameMap t -> GLPoint -> [TextureObject] -> IO ()
 drawGameMap (ColorMap c _) _ _ = do
         clearColor $= c
         clear [ColorBuffer]
         clearColor $= (Color4 0 0 0 0) -- performance drawback?
-drawGameMap (TextureMap texId (tX,tY) (vX,vY) _ _) winSize texList = do
+drawGameMap (TextureMap texId (Point2D tX tY) (Point2D vX vY) _ _) winSize texList = do
         texture Texture2D $= Enabled
         bindTexture Texture2D (texList !! texId)
-        drawTextureMap (tX,tY) (new_winX, new_winY) winSize new_winY texList
+        drawTextureMap (Point2D tX tY) (Point2D new_winX new_winY) winSize new_winY texList
         texture Texture2D $= Disabled
         where new_winX | (vX >= 0) = - vX
                        | otherwise = - vX - tX
@@ -194,9 +195,9 @@ drawGameMap (TileMap matrix size visible _ _) winSize texList = do
 drawGameMap (MultiMap _ _) _ _ = error "Map.drawGameMap error: drawGameMap cannot be applied with MultiMaps!"
 
 -- size of texture, drawing position relative to (X,Y) axis of window, lowest Y drawing position
-drawTextureMap :: Point2D -> Point2D -> Point2D -> GLdouble -> [TextureObject] -> IO ()
-drawTextureMap (tX,tY) (winX,winY) (winWidth,winHeight) baseY texList
-        | (winY > winHeight) = drawTextureMap (tX,tY) (winX + tX, baseY) (winWidth,winHeight) baseY texList
+drawTextureMap :: GLPoint -> GLPoint -> GLPoint -> GLdouble -> [TextureObject] -> IO ()
+drawTextureMap (Point2D tX tY) (Point2D winX winY) (Point2D winWidth winHeight) baseY texList
+        | (winY > winHeight) = drawTextureMap (Point2D tX tY) (Point2D (winX + tX) baseY) (Point2D winWidth winHeight) baseY texList
         | (winX > winWidth) = return ()
         | otherwise = do
                 loadIdentity
@@ -207,23 +208,23 @@ drawTextureMap (tX,tY) (winX,winY) (winWidth,winHeight) baseY texList
                         texCoord $ TexCoord2 1.0 (0.0 :: GLdouble);  vertex $ Vertex3  tX 0.0 (0.0 :: GLdouble)
                         texCoord $ TexCoord2 1.0 (1.0 :: GLdouble);  vertex $ Vertex3  tX  tY (0.0 :: GLdouble)
                         texCoord $ TexCoord2 0.0 (1.0 :: GLdouble);  vertex $ Vertex3 0.0  tY (0.0 :: GLdouble)
-                drawTextureMap (tX,tY) (winX,winY + tY) (winWidth,winHeight) baseY texList
-                
+                drawTextureMap (Point2D tX tY) (Point2D winX $ winY + tY) (Point2D winWidth winHeight) baseY texList
+
 -- textures handles, tile matrix, size of texture, (X,Y) scroll, drawing position relative to Y axis of window
-drawTileMap :: TileMatrix t -> Point2D -> Point2D -> Point2D -> GLdouble -> [TextureObject] -> IO ()
+drawTileMap :: TileMatrix t -> GLPoint -> GLPoint -> GLPoint -> GLdouble -> [TextureObject] -> IO ()
 drawTileMap [] _ _ _ _ _ = return () -- no more tile lines to drawn, so we're done here!
-drawTileMap (a:as) (tX,tY) (sX,sY) (winWidth,winHeight) winY texList
-        | (sY >= tY) = drawTileMap as (tX,tY) (sX,sY-tY) (winWidth,winHeight) winY texList -- scrolls in the Y axis
+drawTileMap (a:as) (Point2D tX tY) (Point2D sX sY) (Point2D winWidth winHeight) winY texList
+        | (sY >= tY) = drawTileMap as (Point2D tX tY) (Point2D sX $ sY-tY) (Point2D winWidth winHeight) winY texList -- scrolls in the Y axis
         | (winY > winHeight) = return () -- drawing position is higher than the Y window coordinate
         | otherwise = do
-                drawTileMapLine a (tX,tY) sX (0.0,winY-sY) winWidth texList
-                drawTileMap as (tX,tY) (sX,sY) (winWidth,winHeight) (winY - sY + tY) texList
+                drawTileMapLine a (Point2D tX tY) sX (Point2D 0.0 $ winY-sY) winWidth texList
+                drawTileMap as (Point2D tX tY) (Point2D sX sY) (Point2D winWidth winHeight) (winY - sY + tY) texList
 
--- textures handles, tile line, size of texture, X scroll, drawing position relative to (X,Y) axis of window            
-drawTileMapLine :: TileLine t -> Point2D -> GLdouble -> Point2D -> GLdouble -> [TextureObject] -> IO ()
+-- textures handles, tile line, size of texture, X scroll, drawing position relative to (X,Y) axis of window
+drawTileMapLine :: TileLine t -> GLPoint -> GLdouble -> GLPoint -> GLdouble -> [TextureObject] -> IO ()
 drawTileMapLine [] _ _ _ _ _ = return () -- no more tiles to drawn, so we're done here!
-drawTileMapLine (a:as) (tX,tY) sX (winX,winY) winWidth texList
-        | (sX >= tX) = drawTileMapLine as (tX,tY) (sX-tX) (winX,winY) winWidth texList -- scrolls in the X axis
+drawTileMapLine (a:as) (Point2D tX tY) sX (Point2D winX winY) winWidth texList
+        | (sX >= tX) = drawTileMapLine as (Point2D tX tY) (sX-tX) (Point2D winX winY) winWidth texList -- scrolls in the X axis
         | (winX > winWidth) = return () -- drawing position is higher than the X window coordinate
         | otherwise = do
                 bindTexture Texture2D (texList !! (getTilePictureIndex a))
@@ -235,6 +236,6 @@ drawTileMapLine (a:as) (tX,tY) sX (winX,winY) winWidth texList
                         texCoord $ TexCoord2 1.0 (0.0 :: GLdouble);  vertex $ Vertex3  tX 0.0 (0.0 :: GLdouble)
                         texCoord $ TexCoord2 1.0 (1.0 :: GLdouble);  vertex $ Vertex3  tX  tY (0.0 :: GLdouble)
                         texCoord $ TexCoord2 0.0 (1.0 :: GLdouble);  vertex $ Vertex3 0.0  tY (0.0 :: GLdouble)
-                drawTileMapLine as (tX,tY) sX (new_winX + sX + tX,winY) winWidth texList
+                drawTileMapLine as (Point2D tX tY) sX (Point2D (new_winX + sX + tX) winY) winWidth texList
                 where new_winX | (sX >= 0) = winX + sX
                                | otherwise = winX + sX

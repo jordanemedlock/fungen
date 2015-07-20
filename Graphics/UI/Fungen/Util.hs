@@ -1,8 +1,8 @@
 {-# OPTIONS_HADDOCK hide #-}
-{- | 
+{- |
 This FunGEn module contains some auxiliary functions.
 -}
-{- 
+{-
 
 FunGEN - Functional Game Engine
 http://www.cin.ufpe.br/~haskell/fungen
@@ -22,7 +22,7 @@ module Graphics.UI.Fungen.Util (
         ord2,
         addNoInvisibility,
         racMod,
-        matrixToList, matrixSize, 
+        matrixToList, matrixSize,
         inv2color3, pathAndInv2color3List, point2DtoVertex3,
         isEmpty,
         when, unless,
@@ -60,7 +60,7 @@ bindTexture tt to = textureBinding tt $= Just to
 
 texStuff :: [TextureObject] -> [AwbfBitmap] -> IO ()
 texStuff [] _ = return ()
-texStuff (t:ts) ((bmW,bmH,bmData):bms) = do
+texStuff (t:ts) ((AwbfBitmap bmW bmH bmData):bms) = do
         bindTexture Texture2D t
         texImage2D Texture2D NoProxy 0 RGBA' (TextureSize2D bmW bmH) 0 bmData
         textureFilter Texture2D $= ((Nearest, Nothing), Nearest)
@@ -93,7 +93,7 @@ toDecimalAux _ 0 = 0
 toDecimalAux (a:as) n
                 | a == '0' = toDecimalAux as (n-1)
                 | otherwise = pow2 (32 - n) + toDecimalAux as (n-1)
-                
+
 pow2 :: GLsizei -> GLsizei
 pow2 0 = 1
 pow2 n = 2 * pow2(n-1)
@@ -102,7 +102,7 @@ toBinary :: Int -> String
 toBinary n
         | n < 2 = show n
         | otherwise = toBinary (n `div` 2) ++ (show (n `mod` 2))
-        
+
 make0 :: Int -> String
 make0 0 = []
 make0 n = '0':(make0 (n-1))
@@ -117,7 +117,7 @@ dropGLsizei n (_:xs) | n>0  = dropGLsizei (n-1) xs
 dropGLsizei _ _ = error "Util.dropGLsizei error: negative argument"
 
 -- | to be used when no invisibility must be added when loading a file
-addNoInvisibility :: [FilePath] -> [(FilePath, Maybe ColorList3)]
+addNoInvisibility :: [FilePath] -> [(FilePath, Maybe (ColorList GLubyte))]
 addNoInvisibility [] = []
 addNoInvisibility (a:as) = (a, Nothing):(addNoInvisibility as)
 
@@ -142,22 +142,21 @@ matrixSize ::  [[a]] -> (Int,Int)
 matrixSize [] = (0,0)
 matrixSize m@(a:_) = ((length m) - 1,(length a) - 1)
 
-inv2color3 :: InvList -> Maybe ColorList3
+inv2color3 :: InvList -> Maybe (ColorList GLubyte)
 inv2color3 Nothing = Nothing
 inv2color3 (Just l) = Just (inv2color3Aux l)
 
-inv2color3Aux :: [(Int,Int,Int)] -> [(GLubyte,GLubyte,GLubyte)]
+inv2color3Aux :: ColorList Int -> ColorList GLubyte
 inv2color3Aux [] = []
-inv2color3Aux ((r,g,b):ls) = (z r,z g,z b):(inv2color3Aux ls)
+inv2color3Aux ((ColorRGB r g b):ls) = (ColorRGB (z r) (z g) (z b)):(inv2color3Aux ls)
                  where z = toEnum.fromEnum
 
-pathAndInv2color3List :: (FilePath,InvList) -> (FilePath, Maybe ColorList3)
+pathAndInv2color3List :: (FilePath,InvList) -> (FilePath, Maybe (ColorList GLubyte))
 pathAndInv2color3List (f,Nothing) = (f,Nothing)
 pathAndInv2color3List (f,Just l) = (f,Just (inv2color3Aux l))
 
-point2DtoVertex3 :: [Point2D] -> [Vertex3 GLdouble]
-point2DtoVertex3 [] = []
-point2DtoVertex3 ((x,y):as) = (Vertex3 x y 0.0):(point2DtoVertex3 as)
+point2DtoVertex3 :: [Point2D GLdouble] -> [Vertex3 GLdouble]
+point2DtoVertex3 ps = map (\p -> (Vertex3 (xPos p) (yPos p) 0.0)) ps
 
 isEmpty :: [a] -> Bool
 isEmpty [] = True

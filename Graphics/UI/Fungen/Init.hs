@@ -1,8 +1,8 @@
 {-# OPTIONS_HADDOCK hide #-}
-{- | 
+{- |
 This FunGEn module contains the initialization procedures.
 -}
-{- 
+{-
 
 FunGEN - Functional Game Engine
 http://www.cin.ufpe.br/~haskell/fungen
@@ -42,7 +42,7 @@ funInit :: WindowConfig           -- ^ main window layout
         -> RefreshType            -- ^ main loop timing
         -> FilePictureList        -- ^ image files
         -> IO ()
-funInit winConfig@((px,py),(sx,sy),t) userMap objectGroups gState gAttrib i gameCicle r picList = do
+funInit winConfig@(WindowConfig (Point2D px py) (Point2D sx sy) t) userMap objectGroups gState gAttrib i gameCicle r picList = do
         initialize "FunGen app" []
         createWindow t -- (return ()) [ Double, RGBA ]
         windowPosition $= Position (fromIntegral px) (fromIntegral py)
@@ -53,7 +53,7 @@ funInit winConfig@((px,py),(sx,sy),t) userMap objectGroups gState gAttrib i game
         displayCallback $= (display game gameCicle)
         setRefresh r stillDown
         mainLoop
-        
+
 basicInit :: Int -> Int -> IO ()
 basicInit sx sy = do
         clearColor $= (Color4 0 0 0 0)
@@ -70,4 +70,3 @@ basicInit sx sy = do
 -- | Exit the program successfully (from within a game action).
 funExit :: IOGame t s u v ()
 funExit = liftIOtoIOGame' exitWith ExitSuccess
-

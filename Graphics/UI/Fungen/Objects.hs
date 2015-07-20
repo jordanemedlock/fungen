@@ -1,8 +1,8 @@
 {-# OPTIONS_HADDOCK hide #-}
-{- | 
+{- |
 This module contains the FunGEn objects procedures
 -}
-{- 
+{-
 FunGEN - Functional Game Engine
 http://www.cin.ufpe.br/~haskell/fungen
 Copyright (C) 2002  Andre Furtado <awbf@cin.ufpe.br>
@@ -49,9 +49,9 @@ data GameObject t = GO {
     objManagerName :: String,
     objPicture     :: GameObjectPicture,
     objAsleep      :: Bool,
-    objSize        :: Point2D,
-    objPosition    :: Point2D,
-    objSpeed       :: Point2D,
+    objSize        :: Point2D GLdouble,
+    objPosition    :: Point2D GLdouble,
+    objSpeed       :: Point2D GLdouble,
     objAttribute   :: t
     }
 
@@ -71,11 +71,11 @@ data GameObjectPicture
 --  | A [TextureObject] Int -- miliseconds between frames
 
 data Primitive
-    = Polyg [Point2D] GLfloat GLfloat GLfloat FillMode -- the points (must be in CCW order!), color, fill mode
+    = Polyg [Point2D GLdouble] GLfloat GLfloat GLfloat FillMode -- the points (must be in CCW order!), color, fill mode
     | Circle GLdouble GLfloat GLfloat GLfloat FillMode -- color, radius, fill mode
-    
+
 data ObjectPicture
-    = Tex (GLdouble,GLdouble) Int -- size, current texture
+    = Tex (Point2D GLdouble) Int -- size, current texture
     | Basic Primitive
 --  | Animation [(FilePath,InvList)] Int -- (path to file, invisible colors), miliseconds between frames
 
@@ -103,17 +103,17 @@ getGameObjectPicture = objPicture
 getGameObjectAsleep :: GameObject t -> Bool
 getGameObjectAsleep = objAsleep
 
-getGameObjectSize :: GameObject t -> (GLdouble,GLdouble)
-getGameObjectSize o = (realToFrac sX,realToFrac sY)
-                      where (sX,sY) = objSize o
+getGameObjectSize :: GameObject t -> Point2D GLdouble
+getGameObjectSize o = (Point2D (realToFrac sX) (realToFrac sY))
+                      where (Point2D sX sY) = objSize o
 
-getGameObjectPosition :: GameObject t -> (GLdouble,GLdouble)
-getGameObjectPosition o = (realToFrac pX,realToFrac pY)
-                          where (pX,pY) = objPosition o
+getGameObjectPosition :: GameObject t -> Point2D GLdouble
+getGameObjectPosition o = (Point2D (realToFrac pX) (realToFrac pY))
+                          where (Point2D pX pY) = objPosition o
 
-getGameObjectSpeed :: GameObject t -> (GLdouble,GLdouble)
-getGameObjectSpeed o = (realToFrac sX,realToFrac sY)
-                       where (sX,sY) = objSpeed o
+getGameObjectSpeed :: GameObject t -> Point2D GLdouble
+getGameObjectSpeed o = (Point2D (realToFrac sX) (realToFrac sY))
+                       where (Point2D sX sY) = objSpeed o
 
 getGameObjectAttribute :: GameObject t -> t
 getGameObjectAttribute = objAttribute
@@ -131,14 +131,14 @@ updateObjectPicture newIndex maxIndex obj =
 updateObjectAsleep :: Bool -> GameObject t -> GameObject t
 updateObjectAsleep asleep o = o {objAsleep = asleep}
 
-updateObjectSize :: (GLdouble,GLdouble) -> GameObject t -> GameObject t
-updateObjectSize (sX,sY) o = o {objSize = (realToFrac sX, realToFrac sY)}
+updateObjectSize :: Point2D GLdouble -> GameObject t -> GameObject t
+updateObjectSize (Point2D sX sY) o = o {objSize = (Point2D (realToFrac sX) (realToFrac sY))}
 
-updateObjectPosition :: (GLdouble,GLdouble) -> GameObject t -> GameObject t
-updateObjectPosition (pX,pY) o = o {objPosition = (realToFrac pX, realToFrac pY)}
+updateObjectPosition :: Point2D GLdouble -> GameObject t -> GameObject t
+updateObjectPosition (Point2D pX pY) o = o {objPosition = (Point2D (realToFrac pX) (realToFrac pY))}
 
-updateObjectSpeed :: (GLdouble,GLdouble) -> GameObject t -> GameObject t
-updateObjectSpeed (sX,sY) o = o {objSpeed = (realToFrac sX, realToFrac sY)}
+updateObjectSpeed :: Point2D GLdouble -> GameObject t -> GameObject t
+updateObjectSpeed (Point2D sX sY) o = o {objSpeed = (Point2D (realToFrac sX) (realToFrac sY))}
 
 updateObjectAttribute :: t -> GameObject t -> GameObject t
 updateObjectAttribute oAttrib o = o {objAttribute = oAttrib}
@@ -161,7 +161,7 @@ updateObjectManagerObjects objs mng = mng {mngObjects = objs}
 ----------------------------------------
 -- initialization of GameObjects
 ----------------------------------------
-object :: String -> ObjectPicture -> Bool -> (GLdouble,GLdouble) -> (GLdouble,GLdouble) -> t -> GameObject t
+object :: String -> ObjectPicture -> Bool -> Point2D GLdouble -> Point2D GLdouble -> t -> GameObject t
 object name pic asleep pos speed oAttrib = let (picture, size) = createPicture pic in
 			GO {
 			objId          = 0,
@@ -175,15 +175,15 @@ object name pic asleep pos speed oAttrib = let (picture, size) = createPicture p
 			objAttribute   = oAttrib
 			}
 
-createPicture :: ObjectPicture -> (GameObjectPicture,Point2D)
+createPicture :: ObjectPicture -> (GameObjectPicture,Point2D GLdouble)
 createPicture (Basic (Polyg points r g b fillMode))  = (B (P (point2DtoVertex3 points) (Color4 r g b 1.0) fillMode),findSize points)
-createPicture (Basic (Circle radius r g b fillMode)) = (B (C radius (Color4 r g b 1.0) fillMode),(2 * radius,2 * radius))
+createPicture (Basic (Circle radius r g b fillMode)) = (B (C radius (Color4 r g b 1.0) fillMode),(Point2D (2 * radius) (2 * radius)))
 createPicture (Tex size picIndex) = (Tx picIndex,size)
 
 -- given a point list, finds the height and width
-findSize :: [Point2D] -> Point2D
-findSize l = ((x2 - x1),(y2 - y1))
-    where (xList,yList) = unzip l
+findSize :: [Point2D GLdouble] -> Point2D GLdouble
+findSize l = (Point2D (x2 - x1) (y2 - y1))
+    where (xList,yList) = (map xPos l, map yPos l)
           (x2,y2) = (maximum xList,maximum yList)
           (x1,y1) = (minimum xList,minimum yList)
 
@@ -227,7 +227,7 @@ drawGameObjectList (o:os) qobj picList | (getGameObjectAsleep o) = drawGameObjec
 drawGameObject :: GameObject t -> QuadricPrimitive -> [TextureObject] -> IO ()
 drawGameObject o _qobj picList = do
     loadIdentity
-    let (pX,pY) = getGameObjectPosition o
+    let (Point2D pX pY) = getGameObjectPosition o
         picture = getGameObjectPicture o
     translate (Vector3 pX pY (0 :: GLdouble) )
     case picture of
@@ -235,7 +235,7 @@ drawGameObject o _qobj picList = do
                     color c
                     if (fillMode == Filled)
                         then (renderPrimitive Polygon  $ mapM_ vertex points)
-                        else (renderPrimitive LineLoop $ mapM_ vertex points) 
+                        else (renderPrimitive LineLoop $ mapM_ vertex points)
 
         (B (C r c fillMode)) -> do
                     color c
@@ -253,10 +253,10 @@ drawGameObject o _qobj picList = do
                             texCoord2 1.0 1.0;  vertex3   x    y  0.0
                             texCoord2 0.0 1.0;  vertex3 (-x)   y  0.0
                         texture Texture2D $= Disabled
-                   where (sX,sY) = getGameObjectSize o
+                   where (Point2D sX sY) = getGameObjectSize o
                          x = sX/2
                          y = sY/2
-            
+
 ------------------------------------------
 -- search routines
 ------------------------------------------
@@ -317,9 +317,9 @@ moveGameObjects (m:ms) = (updateObjectManagerObjects (map moveSingleObject (getO
 moveSingleObject :: GameObject t -> GameObject t
 moveSingleObject o = if (getGameObjectAsleep o)
                         then o
-                        else let (vX,vY) = getGameObjectSpeed o
-                                 (pX,pY) = getGameObjectPosition o
-                             in updateObjectPosition (pX + vX, pY + vY) o
+                        else let (Point2D vX vY) = getGameObjectSpeed o
+                                 (Point2D pX pY) = getGameObjectPosition o
+                             in updateObjectPosition (Point2D (pX + vX) (pY + vY)) o
 
 ------------------------------------------
 -- destroy routines
@@ -332,6 +332,6 @@ destroyGameObject objectName managerName (m:ms) | (getObjectManagerName m == man
                        where newObjects = destroyGameObjectAux objectName (getObjectManagerObjects m)
 
 destroyGameObjectAux :: String -> [(GameObject t)] -> [(GameObject t)]
-destroyGameObjectAux objectName [] = error ("Objects.destroyGameObjectAux error: object: " ++ objectName ++ " not found!") 
+destroyGameObjectAux objectName [] = error ("Objects.destroyGameObjectAux error: object: " ++ objectName ++ " not found!")
 destroyGameObjectAux objectName (o:os) | (getGameObjectName o == objectName) = os
                     | otherwise = o:(destroyGameObjectAux objectName os)

@@ -1,10 +1,10 @@
 {-# OPTIONS_HADDOCK hide #-}
-{- | 
+{- |
 This FunGEn module contains some functions to print text on the screen.
 Fonts supported: Bitmap9By15, Bitmap8By13, BitmapTimesRoman10, BitmapTimesRoman24
 		 BitmapHelvetica10, BitmapHelvetica12, BitmapHelvetica18
 -}
-{- 
+{-
 
 FunGEN - Functional Game Engine
 http://www.cin.ufpe.br/~haskell/fungen
@@ -26,12 +26,12 @@ import Graphics.UI.GLUT
 import Graphics.UI.Fungen.Types
 
 -- | String to be printed, font, screen position, color RGB.
-type Text = (String,BitmapFont,Point2D,GLclampf,GLclampf,GLclampf)
+type Text = (String,BitmapFont,Point2D GLdouble,GLclampf,GLclampf,GLclampf)
 
 -- | Display these texts on screen.
 putGameText :: [Text] -> IO ()
 putGameText [] = return ()
-putGameText ((text,font,(x,y),r,g,b):ts) = do
+putGameText ((text,font,(Point2D x y),r,g,b):ts) = do
 	loadIdentity
 	color (Color3 r g b)
 	rasterPos (Vertex2 x y)
