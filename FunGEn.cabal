@@ -1,10 +1,10 @@
 name:               FunGEn
-version:            0.4.6.1
+version:            0.5
 copyright:          (C) 2002 Andre Furtado <awbf@cin.ufpe.br>
 license:            BSD3
 license-file:       LICENSE
 author:             Andre Furtado <awbf@cin.ufpe.br>
-maintainer:         Simon Michael <simon@joyful.com>
+maintainer:         Jordan Medlock <jordanemedlock@gmail.com>
 homepage:           http://joyful.com/fungen
 category:           Game
 synopsis:           A lightweight, cross-platform, OpenGL/GLUT-based game engine.
@@ -34,7 +34,7 @@ stability:          alpha
 cabal-version:      >= 1.8
 build-type:         Simple
 tested-with:        GHC==7.8.2
-extra-source-files: 
+extra-source-files:
                     README.md,
                     CHANGES
 data-files:
@@ -47,7 +47,7 @@ source-repository head
 
 library
   ghc-options:      -W
-  exposed-modules:  
+  exposed-modules:
                     Graphics.UI.Fungen,
                     Graphics.UI.Fungen.Display,
                     Graphics.UI.Fungen.Game,
