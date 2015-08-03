@@ -82,7 +82,7 @@ executable fungen-pong
   ghc-options: -W
   hs-source-dirs: examples
   main-is:          pong/pong.hs
-  build-depends:    FunGEn == 0.4.*
+  build-depends:    FunGEn == 0.5.*
                    ,base
                    ,OpenGL
                    ,GLUT
@@ -92,7 +92,7 @@ executable fungen-worms
   ghc-options: -W
   hs-source-dirs: examples
   main-is:          worms/worms.hs
-  build-depends:    FunGEn == 0.4.*
+  build-depends:    FunGEn == 0.5.*
                    ,base
                    ,OpenGL
                    ,GLUT
